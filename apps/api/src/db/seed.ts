@@ -43,9 +43,9 @@ if (pn === 0) {
   console.log("Seeded profile row");
 }
 
-const [{ projN }] = await db.select({ n: count() }).from(projects);
-const [{ coN }] = await db.select({ n: count() }).from(experienceCompanies);
-const [{ eduN }] = await db.select({ n: count() }).from(education);
+const [{ n: projN }] = await db.select({ n: count() }).from(projects);
+const [{ n: coN }] = await db.select({ n: count() }).from(experienceCompanies);
+const [{ n: eduN }] = await db.select({ n: count() }).from(education);
 const hasContent = projN > 0 || coN > 0 || eduN > 0;
 
 if (hasContent && !forceContent) {
