@@ -57,7 +57,7 @@ export function HomePage() {
               @{p?.handle || "handle"}
               {p?.headline ? ` · ${p.headline}` : ""}
             </p>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--muted)]">
+            <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[var(--muted)]">
               {p?.joinedLabel ? <span>{p.joinedLabel}</span> : null}
               {p?.location ? <span>{p.location}</span> : null}
               {p?.githubUrl ? (
@@ -71,7 +71,11 @@ export function HomePage() {
                 </a>
               ) : null}
               {p?.emailPublic ? (
-                <a href={`mailto:${p.emailPublic}`} className="underline-offset-2 hover:underline">
+                <a
+                  href={`mailto:${p.emailPublic}`}
+                  title={p.emailPublic}
+                  className="block max-w-[12.5rem] truncate underline-offset-2 hover:underline sm:max-w-none"
+                >
                   {p.emailPublic}
                 </a>
               ) : null}

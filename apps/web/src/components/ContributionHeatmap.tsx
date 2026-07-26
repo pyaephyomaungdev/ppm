@@ -5,6 +5,8 @@ import { apiGet, type ContributionDay, type ContributionYear } from "../lib/api"
 const LEVEL = ["#ececea", "#c4c4c0", "#8a8a86", "#3d3d3a", "#111110"] as const;
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MIN_CELL = 11;
+const GAP = 3;
 
 type Tip = { x: number; y: number; text: string };
 
@@ -26,7 +28,10 @@ export function ContributionHeatmap() {
   const [data, setData] = useState<ContributionYear | null>(null);
   const [loading, setLoading] = useState(true);
   const [tip, setTip] = useState<Tip | null>(null);
+  const [cell, setCell] = useState(MIN_CELL);
+  const [needsScroll, setNeedsScroll] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,6 +63,28 @@ export function ContributionHeatmap() {
     [weeks],
   );
 
+  useEffect(() => {
+    const el = measureRef.current;
+    if (!el || weeks.length === 0) return;
+
+    const update = () => {
+      const width = el.clientWidth;
+      const fluid = (width - GAP * Math.max(0, weeks.length - 1)) / weeks.length;
+      if (fluid < MIN_CELL) {
+        setCell(MIN_CELL);
+        setNeedsScroll(true);
+      } else {
+        setCell(Math.floor(fluid * 100) / 100);
+        setNeedsScroll(false);
+      }
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [weeks.length]);
+
   const showTip = (el: HTMLElement, text: string) => {
     const wrap = wrapRef.current;
     if (!wrap) return;
@@ -69,6 +96,8 @@ export function ContributionHeatmap() {
       text,
     });
   };
+
+  const gridWidth = weeks.length > 0 ? weeks.length * cell + Math.max(0, weeks.length - 1) * GAP : 0;
 
   return (
     <section className="mt-14">
@@ -89,9 +118,7 @@ export function ContributionHeatmap() {
               type="button"
               onClick={() => setYear(y)}
               className={`rounded-md px-2.5 py-1 text-sm transition-colors ${
-                y === year
-                  ? "bg-[var(--ink)] text-[var(--paper)]"
-                  : "text-[var(--muted)] hover:text-[var(--ink)]"
+                y === year ? "btn-primary" : "text-[var(--muted)] hover:text-[var(--ink)]"
               }`}
             >
               {y}
@@ -104,88 +131,104 @@ export function ContributionHeatmap() {
         ref={wrapRef}
         className="relative w-full overflow-hidden rounded-xl border border-[var(--rule)] bg-white px-3 py-4 sm:px-4"
       >
-        {weeks.length > 0 ? (
-          <>
-            {/* Month row — same column count as weeks */}
-            <div
-              className="mb-1.5 grid w-full"
-              style={{
-                gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))`,
-                gap: "clamp(1px, 0.35vw, 3px)",
-              }}
-              aria-hidden
-            >
-              {monthLabels.map((label, i) => (
+        <div ref={measureRef} className="w-full">
+          {weeks.length > 0 ? (
+            <div className={needsScroll ? "heatmap-scroll" : undefined}>
+              <div
+                style={
+                  needsScroll
+                    ? { width: gridWidth, minWidth: gridWidth }
+                    : { width: "100%" }
+                }
+              >
                 <div
-                  key={i}
-                  className="overflow-visible text-[10px] leading-none text-[var(--muted)] sm:text-[11px]"
+                  className="mb-1.5 grid"
+                  style={{
+                    gridTemplateColumns: needsScroll
+                      ? `repeat(${weeks.length}, ${cell}px)`
+                      : `repeat(${weeks.length}, minmax(0, 1fr))`,
+                    gap: GAP,
+                  }}
+                  aria-hidden
                 >
-                  {label ?? ""}
+                  {monthLabels.map((label, i) => (
+                    <div
+                      key={i}
+                      className="overflow-visible text-[10px] leading-none text-[var(--muted)] sm:text-[11px]"
+                    >
+                      {label ?? ""}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            <div
-              className="grid w-full"
-              style={{
-                gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))`,
-                gap: "clamp(1px, 0.35vw, 3px)",
-              }}
-              role="img"
-              aria-label={`${data?.total ?? 0} contributions in ${year}`}
-            >
-              {weeks.map((week, wi) => (
                 <div
-                  key={wi}
                   className="grid"
                   style={{
-                    gridTemplateRows: "repeat(7, minmax(0, 1fr))",
-                    gap: "clamp(1px, 0.35vw, 3px)",
+                    gridTemplateColumns: needsScroll
+                      ? `repeat(${weeks.length}, ${cell}px)`
+                      : `repeat(${weeks.length}, minmax(0, 1fr))`,
+                    gap: GAP,
                   }}
+                  role="img"
+                  aria-label={`${data?.total ?? 0} contributions in ${year}`}
                 >
-                  {week.map((d, di) => {
-                    const level = Math.min(4, Math.max(0, d.level)) as 0 | 1 | 2 | 3 | 4;
-                    const delay = Math.min(wi * 8 + di * 4, 400);
-                    return (
-                      <button
-                        key={d.date}
-                        type="button"
-                        aria-label={`${d.date}: ${d.count} contribution${d.count === 1 ? "" : "s"}`}
-                        onMouseEnter={(e) =>
-                          showTip(
-                            e.currentTarget,
-                            `${d.count} on ${d.date}`,
-                          )
-                        }
-                        onMouseLeave={() => setTip(null)}
-                        onFocus={(e) =>
-                          showTip(
-                            e.currentTarget,
-                            `${d.count} on ${d.date}`,
-                          )
-                        }
-                        onBlur={() => setTip(null)}
-                        className="heatmap-cell aspect-square w-full min-w-0 rounded-[2px] border-0 p-0 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink)] focus-visible:ring-offset-1 sm:rounded-[3px]"
-                        style={{
-                          backgroundColor: LEVEL[level],
-                          animationDelay: `${delay}ms`,
-                        }}
-                      />
-                    );
-                  })}
+                  {weeks.map((week, wi) => (
+                    <div
+                      key={wi}
+                      className="grid"
+                      style={{
+                        gridTemplateRows: needsScroll
+                          ? `repeat(7, ${cell}px)`
+                          : "repeat(7, minmax(0, 1fr))",
+                        gap: GAP,
+                      }}
+                    >
+                      {week.map((d, di) => {
+                        const level = Math.min(4, Math.max(0, d.level)) as 0 | 1 | 2 | 3 | 4;
+                        const delay = Math.min(wi * 8 + di * 4, 400);
+                        return (
+                          <button
+                            key={d.date}
+                            type="button"
+                            aria-label={`${d.date}: ${d.count} contribution${d.count === 1 ? "" : "s"}`}
+                            onMouseEnter={(e) => showTip(e.currentTarget, `${d.count} on ${d.date}`)}
+                            onMouseLeave={() => setTip(null)}
+                            onFocus={(e) => showTip(e.currentTarget, `${d.count} on ${d.date}`)}
+                            onBlur={() => setTip(null)}
+                            className={`heatmap-cell rounded-[2px] border-0 p-0 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink)] focus-visible:ring-offset-1 sm:rounded-[3px] ${
+                              needsScroll ? "" : "aspect-square w-full min-w-0"
+                            }`}
+                            style={{
+                              ...(needsScroll ? { width: cell, height: cell } : null),
+                              backgroundColor: LEVEL[level],
+                              animationDelay: `${delay}ms`,
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
-          </>
-        ) : (
-          <div className="flex h-24 items-center justify-center text-sm text-[var(--muted)]">
-            {loading ? "Loading…" : "No contribution data"}
-          </div>
-        )}
+          ) : (
+            <div className="flex h-24 items-center justify-center text-sm text-[var(--muted)]">
+              {loading ? "Loading…" : "No contribution data"}
+            </div>
+          )}
+        </div>
+
+        {needsScroll ? (
+          <p className="mt-2 text-[11px] text-[var(--muted)] sm:hidden">Swipe sideways to see the full year</p>
+        ) : null}
 
         <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-[var(--muted)] sm:text-xs">
           <span className="tabular-nums">
-            {data?.source === "cache" ? "Cached from GitHub" : data?.source === "github" ? "Live from GitHub" : ""}
+            {data?.source === "cache"
+              ? "Cached from GitHub"
+              : data?.source === "github"
+                ? "Live from GitHub"
+                : ""}
           </span>
           <div className="flex items-center gap-1">
             <span>Less</span>
@@ -209,7 +252,7 @@ export function ContributionHeatmap() {
         {tip ? (
           <div
             className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-md bg-[var(--ink)] px-2 py-1 text-[11px] font-medium text-[var(--paper)] shadow-md"
-            style={{ left: tip.x, top: tip.y }}
+            style={{ left: tip.x, top: tip.y, color: "var(--paper)" }}
           >
             {tip.text}
           </div>
