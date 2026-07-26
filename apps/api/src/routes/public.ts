@@ -17,32 +17,43 @@ import { fetchGithubContributions } from "../lib/github.js";
 export const publicRoutes = new Hono();
 
 publicRoutes.get("/portfolio", async (c) => {
-  const [prof] = await db.select().from(profile).where(eq(profile.id, 1)).limit(1);
-  const statRows = await db.select().from(stats).orderBy(asc(stats.createdAt));
-  const projectRows = await db.select().from(projects).orderBy(asc(projects.createdAt));
-  const companies = await db
-    .select()
-    .from(experienceCompanies)
-    .orderBy(asc(experienceCompanies.sortOrder));
-  const roles = await db.select().from(experienceRoles).orderBy(asc(experienceRoles.sortOrder));
-  const edu = await db.select().from(education).orderBy(asc(education.createdAt));
-  const honorRows = await db.select().from(honors).orderBy(asc(honors.createdAt));
-  const licenseRows = await db.select().from(licenses).orderBy(asc(licenses.createdAt));
+  try {
+    const [prof] = await db.select().from(profile).where(eq(profile.id, 1)).limit(1);
+    const statRows = await db.select().from(stats).orderBy(asc(stats.createdAt));
+    const projectRows = await db.select().from(projects).orderBy(asc(projects.createdAt));
+    const companies = await db
+      .select()
+      .from(experienceCompanies)
+      .orderBy(asc(experienceCompanies.sortOrder));
+    const roles = await db.select().from(experienceRoles).orderBy(asc(experienceRoles.sortOrder));
+    const edu = await db.select().from(education).orderBy(asc(education.createdAt));
+    const honorRows = await db.select().from(honors).orderBy(asc(honors.createdAt));
+    const licenseRows = await db.select().from(licenses).orderBy(asc(licenses.createdAt));
 
-  const experience = companies.map((co) => ({
-    ...co,
-    roles: roles.filter((r) => r.companyId === co.id),
-  }));
+    const experience = companies.map((co) => ({
+      ...co,
+      roles: roles.filter((r) => r.companyId === co.id),
+    }));
 
-  return c.json({
-    profile: prof ?? null,
-    stats: statRows,
-    projects: projectRows,
-    experience,
-    education: edu,
-    honors: honorRows,
-    licenses: licenseRows,
-  });
+    return c.json({
+      profile: prof ?? null,
+      stats: statRows,
+      projects: projectRows,
+      experience,
+      education: edu,
+      honors: honorRows,
+      licenses: licenseRows,
+    });
+  } catch (err) {
+    console.error("GET /portfolio failed:", err);
+    return c.json(
+      {
+        error: "Failed to load portfolio",
+        detail: err instanceof Error ? err.message : String(err),
+      },
+      500,
+    );
+  }
 });
 
 publicRoutes.get("/projects/:slug", async (c) => {
