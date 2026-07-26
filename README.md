@@ -37,12 +37,14 @@ VITE_API_BASE=http://localhost:8787
 ```
 
 On Railway leave `VITE_API_BASE` unset so the browser uses same-origin `/api`.
+
 ## Content workflow
 
-1. Log in to Admin with `ADMIN_EMAIL` / `ADMIN_PASSWORD`
-2. Fill **Profile**, **Stats**, **Projects**, **Experience** (company → roles), **Education**, **Honors**, **Licenses**
-3. Public site reads `GET /api/public/portfolio`
-4. Heatmap: `GET /api/public/github/contributions?year=2026` (needs `GITHUB_USERNAME` + `GITHUB_TOKEN`)
+1. `npm run db:seed` seeds admin + LinkedIn portfolio content (when tables are empty)
+2. To **replace** seeded content: `FORCE_SEED_CONTENT=1 npm run db:seed`
+3. Or edit live via Admin (`/admin/`) with `ADMIN_EMAIL` / `ADMIN_PASSWORD`
+4. Public site: `GET /api/public/portfolio`
+5. Heatmap: `GET /api/public/github/contributions?year=2026` (needs `GITHUB_USERNAME` + `GITHUB_TOKEN`)
 
 ## Railway (one service)
 
