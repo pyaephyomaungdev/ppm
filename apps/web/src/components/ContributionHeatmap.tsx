@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { apiGet, type ContributionDay, type ContributionYear } from "../lib/api";
 
 /** Ink scale — empty gray → near-black */
@@ -8,7 +9,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const MIN_CELL = 11;
 const GAP = 3;
 
-type Tip = { x: number; y: number; text: string };
+type Tip = { x: number; y: number; text: string; place: "above" | "below" };
 
 function monthLabelForWeek(week: ContributionDay[], weekIndex: number, weeks: ContributionDay[][]): string | null {
   const day = week.find((d) => d.date)?.date;
@@ -30,7 +31,6 @@ export function ContributionHeatmap() {
   const [tip, setTip] = useState<Tip | null>(null);
   const [cell, setCell] = useState(MIN_CELL);
   const [needsScroll, setNeedsScroll] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -86,14 +86,14 @@ export function ContributionHeatmap() {
   }, [weeks.length]);
 
   const showTip = (el: HTMLElement, text: string) => {
-    const wrap = wrapRef.current;
-    if (!wrap) return;
-    const wr = wrap.getBoundingClientRect();
     const r = el.getBoundingClientRect();
+    // Near viewport top → show below so the tooltip isn't clipped
+    const place: "above" | "below" = r.top < 96 ? "below" : "above";
     setTip({
-      x: r.left + r.width / 2 - wr.left,
-      y: r.top - wr.top - 8,
+      x: r.left + r.width / 2,
+      y: place === "above" ? r.top - 8 : r.bottom + 8,
       text,
+      place,
     });
   };
 
@@ -117,8 +117,9 @@ export function ContributionHeatmap() {
               key={y}
               type="button"
               onClick={() => setYear(y)}
-              className={`rounded-md px-2.5 py-1 text-sm transition-colors ${y === year ? "btn-primary" : "text-[var(--muted)] hover:text-[var(--ink)]"
-                }`}
+              className={`rounded-md px-2.5 py-1 text-sm transition-colors ${
+                y === year ? "btn-primary" : "text-[var(--muted)] hover:text-[var(--ink)]"
+              }`}
             >
               {y}
             </button>
@@ -126,10 +127,7 @@ export function ContributionHeatmap() {
         </div>
       </div>
 
-      <div
-        ref={wrapRef}
-        className="relative w-full overflow-hidden"
-      >
+      <div className="relative w-full overflow-visible rounded-xl border border-[var(--rule)] bg-white px-3 py-4 sm:px-4">
         <div ref={measureRef} className="w-full">
           {weeks.length > 0 ? (
             <div className={needsScroll ? "heatmap-scroll" : undefined}>
@@ -194,8 +192,9 @@ export function ContributionHeatmap() {
                             onMouseLeave={() => setTip(null)}
                             onFocus={(e) => showTip(e.currentTarget, `${d.count} on ${d.date}`)}
                             onBlur={() => setTip(null)}
-                            className={`heatmap-cell rounded-[2px] border-0 p-0 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink)] focus-visible:ring-offset-1 sm:rounded-[3px] ${needsScroll ? "" : "aspect-square w-full min-w-0"
-                              }`}
+                            className={`heatmap-cell rounded-[2px] border-0 p-0 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink)] focus-visible:ring-offset-1 sm:rounded-[3px] ${
+                              needsScroll ? "" : "aspect-square w-full min-w-0"
+                            }`}
                             style={{
                               ...(needsScroll ? { width: cell, height: cell } : null),
                               backgroundColor: LEVEL[level],
@@ -246,16 +245,24 @@ export function ContributionHeatmap() {
             GitHub heatmap unavailable — set GITHUB_TOKEN on the API to enable live data.
           </p>
         ) : null}
-
-        {tip ? (
-          <div
-            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-md bg-[var(--ink)] px-2 py-1 text-[11px] font-medium text-[var(--paper)] shadow-md"
-            style={{ left: tip.x, top: tip.y, color: "var(--paper)" }}
-          >
-            {tip.text}
-          </div>
-        ) : null}
       </div>
+
+      {tip
+        ? createPortal(
+            <div
+              className="pointer-events-none fixed z-[100] whitespace-nowrap rounded-md bg-[var(--ink)] px-2 py-1 text-[11px] font-medium shadow-md"
+              style={{
+                left: tip.x,
+                top: tip.y,
+                color: "var(--paper)",
+                transform: tip.place === "above" ? "translate(-50%, -100%)" : "translate(-50%, 0)",
+              }}
+            >
+              {tip.text}
+            </div>,
+            document.body,
+          )
+        : null}
     </section>
   );
 }
