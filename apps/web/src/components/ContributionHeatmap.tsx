@@ -127,7 +127,7 @@ export function ContributionHeatmap() {
         </div>
       </div>
 
-      <div className="relative w-full overflow-visible rounded-xl border border-[var(--rule)] bg-white px-3 py-4 sm:px-4">
+      <div className="relative w-full overflow-visible">
         <div ref={measureRef} className="w-full">
           {weeks.length > 0 ? (
             <div className={needsScroll ? "heatmap-scroll" : undefined}>
