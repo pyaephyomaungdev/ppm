@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { SiteFooter, SiteHeader } from "../components/SiteChrome";
 import { apiGet, type Project } from "../lib/api";
 import { scrollToId } from "../lib/scrollToId";
