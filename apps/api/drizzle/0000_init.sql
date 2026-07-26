@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS "stats" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "label" text NOT NULL,
   "value" text NOT NULL,
-  "sort_order" integer DEFAULT 0 NOT NULL
+  "sort_order" integer DEFAULT 0 NOT NULL,
+  "created_at" timestamptz DEFAULT now() NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "projects" (
@@ -71,7 +72,8 @@ CREATE TABLE IF NOT EXISTS "education" (
   "start_date" text,
   "end_date" text,
   "url" text,
-  "sort_order" integer DEFAULT 0 NOT NULL
+  "sort_order" integer DEFAULT 0 NOT NULL,
+  "created_at" timestamptz DEFAULT now() NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "honors" (
@@ -81,7 +83,8 @@ CREATE TABLE IF NOT EXISTS "honors" (
   "date" text,
   "description" text,
   "url" text,
-  "sort_order" integer DEFAULT 0 NOT NULL
+  "sort_order" integer DEFAULT 0 NOT NULL,
+  "created_at" timestamptz DEFAULT now() NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "licenses" (
@@ -92,5 +95,6 @@ CREATE TABLE IF NOT EXISTS "licenses" (
   "expiry_date" text,
   "credential_id" text,
   "url" text,
-  "sort_order" integer DEFAULT 0 NOT NULL
+  "sort_order" integer DEFAULT 0 NOT NULL,
+  "created_at" timestamptz DEFAULT now() NOT NULL
 );

@@ -245,7 +245,7 @@ function CrudList({
 }) {
   const emptyDraft = () =>
     Object.fromEntries(
-      fields.map((f) => [f, f === "featured" ? "false" : f === "sortOrder" ? "0" : ""]),
+      fields.map((f) => [f, f === "featured" ? "false" : ""]),
     );
 
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
@@ -276,8 +276,10 @@ function CrudList({
     const body: Record<string, unknown> = {};
     for (const f of fields) {
       if (f === "featured") body[f] = source[f] === "true";
-      else if (f === "sortOrder") body[f] = Number(source[f] || 0);
-      else if (arrayFields.includes(f)) {
+      else if (f === "sortOrder") {
+        const n = Number(source[f]);
+        body[f] = source[f] === "" || !Number.isFinite(n) ? 0 : n;
+      } else if (arrayFields.includes(f)) {
         body[f] = source[f]
           .split(",")
           .map((s) => s.trim())
@@ -372,7 +374,7 @@ function CrudList({
             <textarea
               key={f}
               className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-              placeholder={f}
+              placeholder={f === "sortOrder" ? "sortOrder (blank = append)" : f}
               rows={f === "body" ? 8 : 3}
               value={draft[f]}
               onChange={(e) => setDraft({ ...draft, [f]: e.target.value })}
@@ -381,7 +383,13 @@ function CrudList({
             <input
               key={f}
               className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-              placeholder={arrayFields.includes(f) ? `${f} (comma-separated)` : f}
+              placeholder={
+                f === "sortOrder"
+                  ? "sortOrder (blank = append)"
+                  : arrayFields.includes(f)
+                    ? `${f} (comma-separated)`
+                    : f
+              }
               value={draft[f]}
               onChange={(e) => setDraft({ ...draft, [f]: e.target.value })}
             />

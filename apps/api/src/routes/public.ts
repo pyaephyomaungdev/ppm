@@ -18,16 +18,16 @@ export const publicRoutes = new Hono();
 
 publicRoutes.get("/portfolio", async (c) => {
   const [prof] = await db.select().from(profile).where(eq(profile.id, 1)).limit(1);
-  const statRows = await db.select().from(stats).orderBy(asc(stats.sortOrder));
-  const projectRows = await db.select().from(projects).orderBy(asc(projects.sortOrder));
+  const statRows = await db.select().from(stats).orderBy(asc(stats.createdAt));
+  const projectRows = await db.select().from(projects).orderBy(asc(projects.createdAt));
   const companies = await db
     .select()
     .from(experienceCompanies)
     .orderBy(asc(experienceCompanies.sortOrder));
   const roles = await db.select().from(experienceRoles).orderBy(asc(experienceRoles.sortOrder));
-  const edu = await db.select().from(education).orderBy(asc(education.sortOrder));
-  const honorRows = await db.select().from(honors).orderBy(asc(honors.sortOrder));
-  const licenseRows = await db.select().from(licenses).orderBy(asc(licenses.sortOrder));
+  const edu = await db.select().from(education).orderBy(asc(education.createdAt));
+  const honorRows = await db.select().from(honors).orderBy(asc(honors.createdAt));
+  const licenseRows = await db.select().from(licenses).orderBy(asc(licenses.createdAt));
 
   const experience = companies.map((co) => ({
     ...co,

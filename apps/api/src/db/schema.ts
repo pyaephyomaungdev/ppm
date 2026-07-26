@@ -35,6 +35,7 @@ export const stats = pgTable("stats", {
   label: text("label").notNull(),
   value: text("value").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const projects = pgTable("projects", {
@@ -84,6 +85,7 @@ export const education = pgTable("education", {
   endDate: text("end_date"),
   url: text("url"),
   sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const honors = pgTable("honors", {
@@ -94,6 +96,7 @@ export const honors = pgTable("honors", {
   description: text("description"),
   url: text("url"),
   sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const licenses = pgTable("licenses", {
@@ -105,4 +108,5 @@ export const licenses = pgTable("licenses", {
   credentialId: text("credential_id"),
   url: text("url"),
   sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

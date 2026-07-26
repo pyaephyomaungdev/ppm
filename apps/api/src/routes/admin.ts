@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, max } from "drizzle-orm";
 import {
   educationSchema,
   experienceCompanySchema,
@@ -29,6 +29,16 @@ adminRoutes.use("*", requireAdmin());
 function emptyToNull(v: string | null | undefined) {
   if (v == null || v === "") return null;
   return v;
+}
+
+/** If client sends 0 / unset, append after current max so new rows are not forced to the top. */
+async function resolveSortOrder(
+  fetchMax: () => Promise<number | null>,
+  requested: number | undefined,
+): Promise<number> {
+  if (requested != null && requested !== 0) return requested;
+  const m = await fetchMax();
+  return (m ?? -1) + 1;
 }
 
 // —— Profile ——
@@ -80,13 +90,17 @@ adminRoutes.put("/profile", async (c) => {
 
 // —— Stats ——
 adminRoutes.get("/stats", async (c) => {
-  return c.json(await db.select().from(stats).orderBy(asc(stats.sortOrder)));
+  return c.json(await db.select().from(stats).orderBy(asc(stats.createdAt)));
 });
 
 adminRoutes.post("/stats", async (c) => {
   const parsed = statSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: "Invalid body" }, 400);
-  const [row] = await db.insert(stats).values(parsed.data).returning();
+  const sortOrder = await resolveSortOrder(async () => {
+    const [row] = await db.select({ m: max(stats.sortOrder) }).from(stats);
+    return row?.m ?? null;
+  }, parsed.data.sortOrder);
+  const [row] = await db.insert(stats).values({ ...parsed.data, sortOrder }).returning();
   return c.json(row, 201);
 });
 
@@ -109,13 +123,17 @@ adminRoutes.delete("/stats/:id", async (c) => {
 
 // —— Projects ——
 adminRoutes.get("/projects", async (c) => {
-  return c.json(await db.select().from(projects).orderBy(asc(projects.sortOrder)));
+  return c.json(await db.select().from(projects).orderBy(asc(projects.createdAt)));
 });
 
 adminRoutes.post("/projects", async (c) => {
   const parsed = projectSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: "Invalid body" }, 400);
   const d = parsed.data;
+  const sortOrder = await resolveSortOrder(async () => {
+    const [row] = await db.select({ m: max(projects.sortOrder) }).from(projects);
+    return row?.m ?? null;
+  }, d.sortOrder);
   const [row] = await db
     .insert(projects)
     .values({
@@ -129,7 +147,7 @@ adminRoutes.post("/projects", async (c) => {
       language: emptyToNull(d.language),
       techStack: d.techStack ?? [],
       featured: d.featured,
-      sortOrder: d.sortOrder,
+      sortOrder,
     })
     .returning();
   return c.json(row, 201);
@@ -184,13 +202,17 @@ adminRoutes.post("/experience/companies", async (c) => {
   const parsed = experienceCompanySchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: "Invalid body" }, 400);
   const d = parsed.data;
+  const sortOrder = await resolveSortOrder(async () => {
+    const [row] = await db.select({ m: max(experienceCompanies.sortOrder) }).from(experienceCompanies);
+    return row?.m ?? null;
+  }, d.sortOrder);
   const [row] = await db
     .insert(experienceCompanies)
     .values({
       name: d.name,
       logoUrl: emptyToNull(d.logoUrl),
       location: emptyToNull(d.location),
-      sortOrder: d.sortOrder,
+      sortOrder,
     })
     .returning();
   return c.json(row, 201);
@@ -223,6 +245,10 @@ adminRoutes.post("/experience/roles", async (c) => {
   const parsed = experienceRoleSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: "Invalid body", details: parsed.error.flatten() }, 400);
   const d = parsed.data;
+  const sortOrder = await resolveSortOrder(async () => {
+    const [row] = await db.select({ m: max(experienceRoles.sortOrder) }).from(experienceRoles);
+    return row?.m ?? null;
+  }, d.sortOrder);
   const [row] = await db
     .insert(experienceRoles)
     .values({
@@ -233,7 +259,7 @@ adminRoutes.post("/experience/roles", async (c) => {
       endDate: emptyToNull(d.endDate),
       location: emptyToNull(d.location),
       skills: d.skills,
-      sortOrder: d.sortOrder,
+      sortOrder,
     })
     .returning();
   return c.json(row, 201);
@@ -268,13 +294,17 @@ adminRoutes.delete("/experience/roles/:id", async (c) => {
 
 // —— Education ——
 adminRoutes.get("/education", async (c) => {
-  return c.json(await db.select().from(education).orderBy(asc(education.sortOrder)));
+  return c.json(await db.select().from(education).orderBy(asc(education.createdAt)));
 });
 
 adminRoutes.post("/education", async (c) => {
   const parsed = educationSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: "Invalid body" }, 400);
   const d = parsed.data;
+  const sortOrder = await resolveSortOrder(async () => {
+    const [row] = await db.select({ m: max(education.sortOrder) }).from(education);
+    return row?.m ?? null;
+  }, d.sortOrder);
   const [row] = await db
     .insert(education)
     .values({
@@ -284,7 +314,7 @@ adminRoutes.post("/education", async (c) => {
       startDate: emptyToNull(d.startDate),
       endDate: emptyToNull(d.endDate),
       url: emptyToNull(d.url),
-      sortOrder: d.sortOrder,
+      sortOrder,
     })
     .returning();
   return c.json(row, 201);
@@ -318,13 +348,17 @@ adminRoutes.delete("/education/:id", async (c) => {
 
 // —— Honors ——
 adminRoutes.get("/honors", async (c) => {
-  return c.json(await db.select().from(honors).orderBy(asc(honors.sortOrder)));
+  return c.json(await db.select().from(honors).orderBy(asc(honors.createdAt)));
 });
 
 adminRoutes.post("/honors", async (c) => {
   const parsed = honorSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: "Invalid body" }, 400);
   const d = parsed.data;
+  const sortOrder = await resolveSortOrder(async () => {
+    const [row] = await db.select({ m: max(honors.sortOrder) }).from(honors);
+    return row?.m ?? null;
+  }, d.sortOrder);
   const [row] = await db
     .insert(honors)
     .values({
@@ -333,7 +367,7 @@ adminRoutes.post("/honors", async (c) => {
       date: emptyToNull(d.date),
       description: emptyToNull(d.description),
       url: emptyToNull(d.url),
-      sortOrder: d.sortOrder,
+      sortOrder,
     })
     .returning();
   return c.json(row, 201);
@@ -366,13 +400,17 @@ adminRoutes.delete("/honors/:id", async (c) => {
 
 // —— Licenses ——
 adminRoutes.get("/licenses", async (c) => {
-  return c.json(await db.select().from(licenses).orderBy(asc(licenses.sortOrder)));
+  return c.json(await db.select().from(licenses).orderBy(asc(licenses.createdAt)));
 });
 
 adminRoutes.post("/licenses", async (c) => {
   const parsed = licenseSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: "Invalid body" }, 400);
   const d = parsed.data;
+  const sortOrder = await resolveSortOrder(async () => {
+    const [row] = await db.select({ m: max(licenses.sortOrder) }).from(licenses);
+    return row?.m ?? null;
+  }, d.sortOrder);
   const [row] = await db
     .insert(licenses)
     .values({
@@ -382,7 +420,7 @@ adminRoutes.post("/licenses", async (c) => {
       expiryDate: emptyToNull(d.expiryDate),
       credentialId: emptyToNull(d.credentialId),
       url: emptyToNull(d.url),
-      sortOrder: d.sortOrder,
+      sortOrder,
     })
     .returning();
   return c.json(row, 201);
