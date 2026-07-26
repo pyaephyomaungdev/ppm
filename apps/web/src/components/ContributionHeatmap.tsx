@@ -1,13 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
-import { apiGet, type ContributionYear } from "../lib/api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { apiGet, type ContributionDay, type ContributionYear } from "../lib/api";
 
-const LEVEL = [
-  "bg-[#ebedf0]",
-  "bg-[#ffd4c2]",
-  "bg-[#ff9b6b]",
-  "bg-[#f56a2c]",
-  "bg-[#f54e00]",
-];
+/** Ink scale — empty gray → near-black */
+const LEVEL = ["#ececea", "#c4c4c0", "#8a8a86", "#3d3d3a", "#111110"] as const;
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+type Tip = { x: number; y: number; text: string };
+
+function monthLabelForWeek(week: ContributionDay[], weekIndex: number, weeks: ContributionDay[][]): string | null {
+  const day = week.find((d) => d.date)?.date;
+  if (!day) return null;
+  const month = new Date(`${day}T12:00:00Z`).getUTCMonth();
+  if (weekIndex === 0) return MONTHS[month];
+  const prev = weeks[weekIndex - 1]?.find((d) => d.date)?.date;
+  if (!prev) return MONTHS[month];
+  const prevMonth = new Date(`${prev}T12:00:00Z`).getUTCMonth();
+  return month !== prevMonth ? MONTHS[month] : null;
+}
 
 export function ContributionHeatmap() {
   const thisYear = new Date().getUTCFullYear();
@@ -15,6 +25,8 @@ export function ContributionHeatmap() {
   const [year, setYear] = useState(thisYear);
   const [data, setData] = useState<ContributionYear | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tip, setTip] = useState<Tip | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,14 +48,31 @@ export function ContributionHeatmap() {
 
   const weeks = useMemo(() => {
     const days = data?.days ?? [];
-    const chunks: typeof days[] = [];
+    const chunks: ContributionDay[][] = [];
     for (let i = 0; i < days.length; i += 7) chunks.push(days.slice(i, i + 7));
     return chunks;
   }, [data]);
 
+  const monthLabels = useMemo(
+    () => weeks.map((w, i) => monthLabelForWeek(w, i, weeks)),
+    [weeks],
+  );
+
+  const showTip = (el: HTMLElement, text: string) => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const wr = wrap.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    setTip({
+      x: r.left + r.width / 2 - wr.left,
+      y: r.top - wr.top - 8,
+      text,
+    });
+  };
+
   return (
     <section className="mt-14">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
             Contributions
@@ -53,16 +82,16 @@ export function ContributionHeatmap() {
             <span className="ml-2 text-base font-normal text-[var(--muted)]">in {year}</span>
           </h2>
         </div>
-        <div className="flex gap-1">
+        <div className="flex rounded-lg border border-[var(--rule)] bg-white p-0.5">
           {years.map((y) => (
             <button
               key={y}
               type="button"
               onClick={() => setYear(y)}
-              className={`rounded-md px-2.5 py-1 text-sm ${
+              className={`rounded-md px-2.5 py-1 text-sm transition-colors ${
                 y === year
                   ? "bg-[var(--ink)] text-[var(--paper)]"
-                  : "text-[var(--muted)] hover:bg-[var(--soft)]"
+                  : "text-[var(--muted)] hover:text-[var(--ink)]"
               }`}
             >
               {y}
@@ -71,31 +100,119 @@ export function ContributionHeatmap() {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-[var(--rule)] bg-white p-4">
-        <div className="inline-flex gap-[3px]">
-          {weeks.map((week, wi) => (
-            <div key={wi} className="flex flex-col gap-[3px]">
-              {week.map((d) => (
+      <div
+        ref={wrapRef}
+        className="relative w-full overflow-hidden rounded-xl border border-[var(--rule)] bg-white px-3 py-4 sm:px-4"
+      >
+        {weeks.length > 0 ? (
+          <>
+            {/* Month row — same column count as weeks */}
+            <div
+              className="mb-1.5 grid w-full"
+              style={{
+                gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))`,
+                gap: "clamp(1px, 0.35vw, 3px)",
+              }}
+              aria-hidden
+            >
+              {monthLabels.map((label, i) => (
                 <div
-                  key={d.date}
-                  title={`${d.date}: ${d.count} contribution${d.count === 1 ? "" : "s"}`}
-                  className={`h-[11px] w-[11px] rounded-[3px] ${LEVEL[d.level] ?? LEVEL[0]} transition-transform hover:scale-125`}
-                />
+                  key={i}
+                  className="overflow-visible text-[10px] leading-none text-[var(--muted)] sm:text-[11px]"
+                >
+                  {label ?? ""}
+                </div>
               ))}
             </div>
-          ))}
+
+            <div
+              className="grid w-full"
+              style={{
+                gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))`,
+                gap: "clamp(1px, 0.35vw, 3px)",
+              }}
+              role="img"
+              aria-label={`${data?.total ?? 0} contributions in ${year}`}
+            >
+              {weeks.map((week, wi) => (
+                <div
+                  key={wi}
+                  className="grid"
+                  style={{
+                    gridTemplateRows: "repeat(7, minmax(0, 1fr))",
+                    gap: "clamp(1px, 0.35vw, 3px)",
+                  }}
+                >
+                  {week.map((d, di) => {
+                    const level = Math.min(4, Math.max(0, d.level)) as 0 | 1 | 2 | 3 | 4;
+                    const delay = Math.min(wi * 8 + di * 4, 400);
+                    return (
+                      <button
+                        key={d.date}
+                        type="button"
+                        aria-label={`${d.date}: ${d.count} contribution${d.count === 1 ? "" : "s"}`}
+                        onMouseEnter={(e) =>
+                          showTip(
+                            e.currentTarget,
+                            `${d.count} on ${d.date}`,
+                          )
+                        }
+                        onMouseLeave={() => setTip(null)}
+                        onFocus={(e) =>
+                          showTip(
+                            e.currentTarget,
+                            `${d.count} on ${d.date}`,
+                          )
+                        }
+                        onBlur={() => setTip(null)}
+                        className="heatmap-cell aspect-square w-full min-w-0 rounded-[2px] border-0 p-0 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink)] focus-visible:ring-offset-1 sm:rounded-[3px]"
+                        style={{
+                          backgroundColor: LEVEL[level],
+                          animationDelay: `${delay}ms`,
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="flex h-24 items-center justify-center text-sm text-[var(--muted)]">
+            {loading ? "Loading…" : "No contribution data"}
+          </div>
+        )}
+
+        <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-[var(--muted)] sm:text-xs">
+          <span className="tabular-nums">
+            {data?.source === "cache" ? "Cached from GitHub" : data?.source === "github" ? "Live from GitHub" : ""}
+          </span>
+          <div className="flex items-center gap-1">
+            <span>Less</span>
+            {LEVEL.map((c, i) => (
+              <span
+                key={i}
+                className="inline-block h-2.5 w-2.5 rounded-[2px] sm:h-3 sm:w-3 sm:rounded-[3px]"
+                style={{ backgroundColor: c }}
+              />
+            ))}
+            <span>More</span>
+          </div>
         </div>
-        <div className="mt-3 flex items-center justify-end gap-1 text-xs text-[var(--muted)]">
-          <span>Less</span>
-          {LEVEL.map((c, i) => (
-            <span key={i} className={`inline-block h-[11px] w-[11px] rounded-[3px] ${c}`} />
-          ))}
-          <span>More</span>
-        </div>
+
         {data?.source === "empty" ? (
           <p className="mt-2 text-xs text-[var(--muted)]">
             GitHub heatmap unavailable — set GITHUB_TOKEN on the API to enable live data.
           </p>
+        ) : null}
+
+        {tip ? (
+          <div
+            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-md bg-[var(--ink)] px-2 py-1 text-[11px] font-medium text-[var(--paper)] shadow-md"
+            style={{ left: tip.x, top: tip.y }}
+          >
+            {tip.text}
+          </div>
         ) : null}
       </div>
     </section>
