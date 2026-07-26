@@ -35,7 +35,6 @@ export function SiteHeader({ name }: { name?: string | null }) {
           className="flex items-center gap-2 font-semibold tracking-tight"
           onClick={() => setOpen(false)}
         >
-          <span className="inline-block h-5 w-5 rounded-md bg-[var(--ink)]" aria-hidden />
           {name || "Portfolio"}
         </Link>
 
@@ -58,19 +57,16 @@ export function SiteHeader({ name }: { name?: string | null }) {
           <span className="sr-only">{open ? "Close" : "Menu"}</span>
           <span className="relative block h-3.5 w-5" aria-hidden>
             <span
-              className={`absolute left-0 top-0 block h-0.5 w-full rounded-full bg-current transition ${
-                open ? "translate-y-[6px] rotate-45" : ""
-              }`}
+              className={`absolute left-0 top-0 block h-0.5 w-full rounded-full bg-current transition ${open ? "translate-y-[6px] rotate-45" : ""
+                }`}
             />
             <span
-              className={`absolute left-0 top-[6px] block h-0.5 w-full rounded-full bg-current transition ${
-                open ? "opacity-0" : ""
-              }`}
+              className={`absolute left-0 top-[6px] block h-0.5 w-full rounded-full bg-current transition ${open ? "opacity-0" : ""
+                }`}
             />
             <span
-              className={`absolute left-0 top-[12px] block h-0.5 w-full rounded-full bg-current transition ${
-                open ? "-translate-y-[6px] -rotate-45" : ""
-              }`}
+              className={`absolute left-0 top-[12px] block h-0.5 w-full rounded-full bg-current transition ${open ? "-translate-y-[6px] -rotate-45" : ""
+                }`}
             />
           </span>
         </button>
