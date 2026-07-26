@@ -32,9 +32,12 @@ CREATE TABLE IF NOT EXISTS "projects" (
   "title" text NOT NULL,
   "slug" text NOT NULL UNIQUE,
   "summary" text,
+  "body" text,
+  "period" text,
   "url" text,
   "repo_url" text,
   "language" text,
+  "tech_stack" jsonb DEFAULT '[]'::jsonb NOT NULL,
   "featured" boolean DEFAULT false NOT NULL,
   "sort_order" integer DEFAULT 0 NOT NULL,
   "created_at" timestamptz DEFAULT now() NOT NULL

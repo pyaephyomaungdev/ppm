@@ -119,11 +119,17 @@ adminRoutes.post("/projects", async (c) => {
   const [row] = await db
     .insert(projects)
     .values({
-      ...d,
+      title: d.title,
+      slug: d.slug,
       summary: emptyToNull(d.summary),
+      body: emptyToNull(d.body),
+      period: emptyToNull(d.period),
       url: emptyToNull(d.url),
       repoUrl: emptyToNull(d.repoUrl),
       language: emptyToNull(d.language),
+      techStack: d.techStack ?? [],
+      featured: d.featured,
+      sortOrder: d.sortOrder,
     })
     .returning();
   return c.json(row, 201);
@@ -136,11 +142,17 @@ adminRoutes.put("/projects/:id", async (c) => {
   const [row] = await db
     .update(projects)
     .set({
-      ...d,
+      title: d.title,
+      slug: d.slug,
       summary: emptyToNull(d.summary),
+      body: emptyToNull(d.body),
+      period: emptyToNull(d.period),
       url: emptyToNull(d.url),
       repoUrl: emptyToNull(d.repoUrl),
       language: emptyToNull(d.language),
+      techStack: d.techStack ?? [],
+      featured: d.featured,
+      sortOrder: d.sortOrder,
     })
     .where(eq(projects.id, c.req.param("id")))
     .returning();

@@ -45,6 +45,13 @@ publicRoutes.get("/portfolio", async (c) => {
   });
 });
 
+publicRoutes.get("/projects/:slug", async (c) => {
+  const slug = c.req.param("slug");
+  const [row] = await db.select().from(projects).where(eq(projects.slug, slug)).limit(1);
+  if (!row) return c.json({ error: "Not found" }, 404);
+  return c.json(row);
+});
+
 publicRoutes.get("/github/contributions", async (c) => {
   const yearParam = c.req.query("year");
   const year = yearParam ? Number(yearParam) : new Date().getUTCFullYear();

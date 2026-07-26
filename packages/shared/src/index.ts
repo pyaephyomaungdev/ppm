@@ -22,10 +22,13 @@ export const statSchema = z.object({
 export const projectSchema = z.object({
   title: z.string().min(1).max(160),
   slug: z.string().min(1).max(160),
-  summary: z.string().max(1000).optional().nullable(),
+  summary: z.string().max(2000).optional().nullable(),
+  body: z.string().max(20000).optional().nullable(),
+  period: z.string().max(80).optional().nullable(),
   url: z.string().url().optional().nullable().or(z.literal("")),
   repoUrl: z.string().url().optional().nullable().or(z.literal("")),
   language: z.string().max(64).optional().nullable(),
+  techStack: z.array(z.string().max(64)).default([]),
   featured: z.boolean().default(false),
   sortOrder: z.number().int().default(0),
 });

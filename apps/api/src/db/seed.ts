@@ -1,6 +1,6 @@
 import "../loadEnv.js";
 import * as argon2 from "argon2";
-import { count } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { db } from "./client.js";
 import {
   admins,
@@ -17,6 +17,141 @@ import {
 const email = (process.env.ADMIN_EMAIL || "admin@example.com").trim().toLowerCase();
 const password = process.env.ADMIN_PASSWORD || "changeme";
 const forceContent = process.env.FORCE_SEED_CONTENT === "1" || process.env.FORCE_SEED_CONTENT === "true";
+
+type ProjectSeed = {
+  title: string;
+  slug: string;
+  summary: string;
+  body: string;
+  period: string | null;
+  url: string | null;
+  repoUrl: string | null;
+  language: string;
+  techStack: string[];
+  featured: boolean;
+  sortOrder: number;
+};
+
+const PROJECT_SEEDS: ProjectSeed[] = [
+  {
+    title: "Digital Clinic Management System (DCMS)",
+    slug: "digital-clinic-management-system",
+    summary:
+      "Web-based clinic platform covering registration through checkout, with branch isolation and role-based access control.",
+    body: [
+      "Associated with Spring University Myanmar.",
+      "",
+      "Developed a comprehensive Digital Clinic Management System (DCMS) to streamline clinical workflows from patient registration to checkout. The system replaces manual processes with an integrated digital platform, supporting branch-level data isolation and role-based access control (RBAC).",
+      "",
+      "Patient & Appointment Management — public self-registration and schedule-aware appointment booking with conflict prevention.",
+      "",
+      "Clinical & Billing Workflow — automated clinical encounters, prescription management linked to a central medication catalog, and a streamlined invoice-to-payment checkout flow.",
+      "",
+      "Architecture & Security — scalable backend with Node.js, TypeScript, and MongoDB, Redis/BullMQ background jobs, comprehensive audit trails, and Cloudflare Turnstile.",
+      "",
+      "Infrastructure — Docker for containerized, repeatable development and production environments.",
+    ].join("\n"),
+    period: "Dec 2025 – Mar 2026",
+    url: null,
+    repoUrl: null,
+    language: "TypeScript",
+    techStack: [
+      "React",
+      "Vite",
+      "Tailwind CSS",
+      "Node.js",
+      "TypeScript",
+      "MongoDB",
+      "Mongoose",
+      "Redis",
+      "BullMQ",
+      "Docker",
+    ],
+    featured: true,
+    sortOrder: 0,
+  },
+  {
+    title: "ToastStar",
+    slug: "toaststar",
+    summary:
+      "React toast library with cinematic center-launch intros, hover fan-out stacks, queue-aware delivery, and optional toast history.",
+    body: [
+      "toaststar is an open-source React notification library focused on motion and control — not just another snackbar wrapper.",
+      "",
+      "It ships a center-launch intro before settling to the edge, hover-only stack fan-out, scoped controllers so multiple apps on one page do not cross-fire, and helpers like toast.loading(), toast.update(), and toast.promise() for async flows.",
+      "",
+      "Optional IndexedDB or in-memory history, theme presets (glass, midnight, sunset, and more), progress bars, swipe-to-dismiss, dedupe keys, and queue overflow policies round out the API. Install with npm install toaststar.",
+    ].join("\n"),
+    period: null,
+    url: "https://toaststar.pages.dev/",
+    repoUrl: "https://github.com/pyaephyomaungdev/toaststar",
+    language: "TypeScript",
+    techStack: ["React", "TypeScript", "Vite", "IndexedDB"],
+    featured: true,
+    sortOrder: 1,
+  },
+  {
+    title: "DeskKit",
+    slug: "deskkit",
+    summary:
+      "Local-first browser suite for private work — PII masking, PDF tools, image redact, metadata strip, and notes. Bytes stay on device.",
+    body: [
+      "DeskKit is a local-first privacy suite that runs sensitive tools in the browser: SecureLens for PII masking in AI chats, PDF Pages / Stamp / Merge / Split / Compress, Image Redact, Metadata Strip, and Notes.",
+      "",
+      "PDF and image bytes never leave the device. Notes stay in IndexedDB unless you explicitly save them to an optional encrypted vault. Signed-in users can create Secure Share links with password-derived AES-GCM ciphertext and expiry.",
+      "",
+      "The stack includes a React + Vite web app, Hono API for auth and vault ciphertext, pure TypeScript PII/PDF packages, and an optional local MCP server so Cursor or Claude Desktop can call tools on your machine without sending data to the cloud.",
+      "",
+      "A hosted PII mask/unmask API with daily free quota is also available for agents and backends that need Zero Data Retention-style processing.",
+    ].join("\n"),
+    period: null,
+    url: "https://deskkit.space/",
+    repoUrl: "https://github.com/pyaephyomaungdev/secure-lens",
+    language: "TypeScript",
+    techStack: [
+      "React",
+      "TypeScript",
+      "Vite",
+      "Tailwind CSS",
+      "Hono",
+      "PostgreSQL",
+      "Redis",
+      "pdf-lib",
+      "Web Crypto",
+    ],
+    featured: true,
+    sortOrder: 2,
+  },
+];
+
+async function ensureProjects() {
+  for (const p of PROJECT_SEEDS) {
+    const [existing] = await db.select().from(projects).where(eq(projects.slug, p.slug)).limit(1);
+    if (existing) {
+      if (!existing.body) {
+        await db
+          .update(projects)
+          .set({
+            summary: p.summary,
+            body: p.body,
+            period: p.period,
+            url: p.url,
+            repoUrl: p.repoUrl,
+            language: p.language,
+            techStack: p.techStack,
+            featured: p.featured,
+          })
+          .where(eq(projects.id, existing.id));
+        console.log(`Enriched project ${p.slug}`);
+      } else {
+        console.log(`Project ${p.slug} exists — skip`);
+      }
+      continue;
+    }
+    await db.insert(projects).values(p);
+    console.log(`Inserted project ${p.slug}`);
+  }
+}
 
 const [{ n }] = await db.select({ n: count() }).from(admins);
 if (n === 0) {
@@ -49,7 +184,8 @@ const [{ n: eduN }] = await db.select({ n: count() }).from(education);
 const hasContent = projN > 0 || coN > 0 || eduN > 0;
 
 if (hasContent && !forceContent) {
-  console.log("Portfolio content already exists — skip (set FORCE_SEED_CONTENT=1 to replace)");
+  console.log("Portfolio content already exists — ensuring featured projects only");
+  await ensureProjects();
   process.exit(0);
 }
 
@@ -73,26 +209,7 @@ await db.insert(stats).values([
   { label: "Open to", value: "Remote", sortOrder: 3 },
 ]);
 
-await db.insert(projects).values({
-  title: "Digital Clinic Management System (DCMS)",
-  slug: "digital-clinic-management-system",
-  summary: [
-    "Dec 2025 – Mar 2026 · Associated with Spring University Myanmar",
-    "",
-    "Developed a comprehensive, web-based Digital Clinic Management System (DCMS) to streamline clinical workflows from patient registration to checkout. The system replaces manual processes with an integrated digital platform, supporting branch-level data isolation and role-based access control (RBAC).",
-    "",
-    "Key features:",
-    "• Patient & Appointment Management — public self-registration and schedule-aware booking with conflict prevention.",
-    "• Clinical & Billing Workflow — clinical encounters, prescription management linked to a medication catalog, and invoice-to-payment checkout.",
-    "• Architecture & Security — Node.js, TypeScript, MongoDB, Redis/BullMQ jobs, audit trails, and Cloudflare Turnstile.",
-    "• Infrastructure — Docker for repeatable development and production environments.",
-    "",
-    "Stack: React, Vite, Tailwind CSS, Node.js, TypeScript, MongoDB, Mongoose, Redis, BullMQ, Docker.",
-  ].join("\n"),
-  language: "TypeScript",
-  featured: true,
-  sortOrder: 0,
-});
+await ensureProjects();
 
 const [studio] = await db
   .insert(experienceCompanies)

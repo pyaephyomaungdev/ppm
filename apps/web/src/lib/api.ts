@@ -25,9 +25,12 @@ export type Project = {
   title: string;
   slug: string;
   summary: string | null;
+  body: string | null;
+  period: string | null;
   url: string | null;
   repoUrl: string | null;
   language: string | null;
+  techStack: string[];
   featured: boolean;
   sortOrder: number;
 };

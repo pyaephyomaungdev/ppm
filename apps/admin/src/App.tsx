@@ -122,7 +122,21 @@ export default function App() {
           {tab === "projects" ? (
             <CrudList
               kind="projects"
-              fields={["title", "slug", "summary", "url", "repoUrl", "language", "featured", "sortOrder"]}
+              fields={[
+                "title",
+                "slug",
+                "summary",
+                "body",
+                "period",
+                "url",
+                "repoUrl",
+                "language",
+                "techStack",
+                "featured",
+                "sortOrder",
+              ]}
+              longFields={["summary", "body"]}
+              arrayFields={["techStack"]}
             />
           ) : null}
           {tab === "experience" ? <ExperienceEditor /> : null}
@@ -218,11 +232,26 @@ function ProfileEditor() {
   );
 }
 
-function CrudList({ kind, fields }: { kind: string; fields: string[] }) {
+function CrudList({
+  kind,
+  fields,
+  longFields = [],
+  arrayFields = [],
+}: {
+  kind: string;
+  fields: string[];
+  longFields?: string[];
+  arrayFields?: string[];
+}) {
+  const emptyDraft = () =>
+    Object.fromEntries(
+      fields.map((f) => [f, f === "featured" ? "false" : f === "sortOrder" ? "0" : ""]),
+    );
+
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
-  const [draft, setDraft] = useState<Record<string, string>>(() =>
-    Object.fromEntries(fields.map((f) => [f, f === "featured" ? "false" : f === "sortOrder" ? "0" : ""])),
-  );
+  const [draft, setDraft] = useState<Record<string, string>>(emptyDraft);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
 
   async function reload() {
     setRows(await api(`/api/admin/${kind}`));
@@ -232,22 +261,77 @@ function CrudList({ kind, fields }: { kind: string; fields: string[] }) {
     void reload();
   }, [kind]);
 
-  async function create(e: FormEvent) {
-    e.preventDefault();
+  function rowToDraft(r: Record<string, unknown>) {
+    const next: Record<string, string> = {};
+    for (const f of fields) {
+      const v = r[f];
+      if (f === "featured") next[f] = v === true ? "true" : "false";
+      else if (arrayFields.includes(f) && Array.isArray(v)) next[f] = v.join(", ");
+      else next[f] = v == null ? "" : String(v);
+    }
+    return next;
+  }
+
+  function buildBody(source: Record<string, string>) {
     const body: Record<string, unknown> = {};
     for (const f of fields) {
-      if (f === "featured") body[f] = draft[f] === "true";
-      else if (f === "sortOrder") body[f] = Number(draft[f] || 0);
-      else body[f] = draft[f];
+      if (f === "featured") body[f] = source[f] === "true";
+      else if (f === "sortOrder") body[f] = Number(source[f] || 0);
+      else if (arrayFields.includes(f)) {
+        body[f] = source[f]
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      } else body[f] = source[f];
     }
-    await api(`/api/admin/${kind}`, { method: "POST", body: JSON.stringify(body) });
+    return body;
+  }
+
+  function startEdit(r: Record<string, unknown>) {
+    setEditingId(String(r.id));
+    setDraft(rowToDraft(r));
+    setMsg(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setDraft(emptyDraft());
+    setMsg(null);
+  }
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    const body = buildBody(draft);
+    if (editingId) {
+      await api(`/api/admin/${kind}/${editingId}`, { method: "PUT", body: JSON.stringify(body) });
+      setMsg("Updated");
+      cancelEdit();
+    } else {
+      await api(`/api/admin/${kind}`, { method: "POST", body: JSON.stringify(body) });
+      setMsg("Created");
+      setDraft(emptyDraft());
+    }
     await reload();
   }
 
   async function remove(id: string) {
     if (!confirm("Delete?")) return;
     await api(`/api/admin/${kind}/${id}`, { method: "DELETE" });
+    if (editingId === id) cancelEdit();
     await reload();
+  }
+
+  function titleOf(r: Record<string, unknown>) {
+    return String(r.label ?? r.title ?? r.name ?? r.school ?? r.id);
+  }
+
+  function subtitleOf(r: Record<string, unknown>) {
+    if (r.value != null) return String(r.value);
+    if (r.summary != null) return String(r.summary).slice(0, 120);
+    if (r.issuer != null) return String(r.issuer);
+    if (r.degree != null) return String(r.degree);
+    return null;
   }
 
   return (
@@ -257,31 +341,67 @@ function CrudList({ kind, fields }: { kind: string; fields: string[] }) {
         {rows.map((r) => (
           <li
             key={String(r.id)}
-            className="flex items-start justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2 text-sm"
+            className={`flex items-start justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${
+              editingId === String(r.id) ? "border-neutral-900 bg-neutral-50" : "border-neutral-200"
+            }`}
           >
-            <pre className="overflow-x-auto whitespace-pre-wrap text-xs">
-              {JSON.stringify(r, null, 0)}
-            </pre>
-            <button type="button" className="text-red-600" onClick={() => void remove(String(r.id))}>
-              Delete
-            </button>
+            <div className="min-w-0">
+              <p className="font-medium">{titleOf(r)}</p>
+              {subtitleOf(r) ? (
+                <p className="mt-0.5 truncate text-neutral-500">{subtitleOf(r)}</p>
+              ) : null}
+              {r.sortOrder != null ? (
+                <p className="mt-1 text-xs text-neutral-400">sort {String(r.sortOrder)}</p>
+              ) : null}
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <button type="button" className="text-neutral-800 underline" onClick={() => startEdit(r)}>
+                Edit
+              </button>
+              <button type="button" className="text-red-600" onClick={() => void remove(String(r.id))}>
+                Delete
+              </button>
+            </div>
           </li>
         ))}
       </ul>
-      <form onSubmit={(e) => void create(e)} className="mt-6 space-y-2 border-t border-neutral-200 pt-4">
-        <h3 className="font-medium">Add</h3>
-        {fields.map((f) => (
-          <input
-            key={f}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            placeholder={f}
-            value={draft[f]}
-            onChange={(e) => setDraft({ ...draft, [f]: e.target.value })}
-          />
-        ))}
-        <button type="submit" className="rounded-lg bg-neutral-900 px-4 py-2 text-sm text-white">
-          Create
-        </button>
+      <form onSubmit={(e) => void save(e)} className="mt-6 space-y-2 border-t border-neutral-200 pt-4">
+        <h3 className="font-medium">{editingId ? "Edit" : "Add"}</h3>
+        {fields.map((f) =>
+          longFields.includes(f) ? (
+            <textarea
+              key={f}
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              placeholder={f}
+              rows={f === "body" ? 8 : 3}
+              value={draft[f]}
+              onChange={(e) => setDraft({ ...draft, [f]: e.target.value })}
+            />
+          ) : (
+            <input
+              key={f}
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              placeholder={arrayFields.includes(f) ? `${f} (comma-separated)` : f}
+              value={draft[f]}
+              onChange={(e) => setDraft({ ...draft, [f]: e.target.value })}
+            />
+          ),
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="submit" className="rounded-lg bg-neutral-900 px-4 py-2 text-sm text-white">
+            {editingId ? "Save changes" : "Create"}
+          </button>
+          {editingId ? (
+            <button
+              type="button"
+              className="rounded-lg border border-neutral-300 px-4 py-2 text-sm"
+              onClick={cancelEdit}
+            >
+              Cancel
+            </button>
+          ) : null}
+          {msg ? <span className="text-sm text-green-700">{msg}</span> : null}
+        </div>
       </form>
     </div>
   );
