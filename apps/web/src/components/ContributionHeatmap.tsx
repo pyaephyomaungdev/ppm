@@ -117,9 +117,8 @@ export function ContributionHeatmap() {
               key={y}
               type="button"
               onClick={() => setYear(y)}
-              className={`rounded-md px-2.5 py-1 text-sm transition-colors ${
-                y === year ? "btn-primary" : "text-[var(--muted)] hover:text-[var(--ink)]"
-              }`}
+              className={`rounded-md px-2.5 py-1 text-sm transition-colors ${y === year ? "btn-primary" : "text-[var(--muted)] hover:text-[var(--ink)]"
+                }`}
             >
               {y}
             </button>
@@ -129,7 +128,7 @@ export function ContributionHeatmap() {
 
       <div
         ref={wrapRef}
-        className="relative w-full overflow-hidden rounded-xl border border-[var(--rule)] bg-white px-3 py-4 sm:px-4"
+        className="relative w-full overflow-hidden"
       >
         <div ref={measureRef} className="w-full">
           {weeks.length > 0 ? (
@@ -195,9 +194,8 @@ export function ContributionHeatmap() {
                             onMouseLeave={() => setTip(null)}
                             onFocus={(e) => showTip(e.currentTarget, `${d.count} on ${d.date}`)}
                             onBlur={() => setTip(null)}
-                            className={`heatmap-cell rounded-[2px] border-0 p-0 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink)] focus-visible:ring-offset-1 sm:rounded-[3px] ${
-                              needsScroll ? "" : "aspect-square w-full min-w-0"
-                            }`}
+                            className={`heatmap-cell rounded-[2px] border-0 p-0 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink)] focus-visible:ring-offset-1 sm:rounded-[3px] ${needsScroll ? "" : "aspect-square w-full min-w-0"
+                              }`}
                             style={{
                               ...(needsScroll ? { width: cell, height: cell } : null),
                               backgroundColor: LEVEL[level],
