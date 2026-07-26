@@ -26,17 +26,17 @@ npm run dev:admin  # :5174
 ```
 
 - Portfolio: http://localhost:5173  
-- Admin: http://localhost:5174  
+- Admin (local Vite): http://localhost:5174  
+- Admin (production / single Railway host): `https://YOUR-APP/admin/`  
 - Health: http://localhost:8787/api/health  
 
-Set `VITE_API_BASE=http://localhost:8787` in `.env` (or leave empty and proxy — by default clients call absolute paths on the Vite origin; for local, set `VITE_API_BASE` in each Vite app via env).
-
-Create `apps/web/.env` and `apps/admin/.env`:
+For local Vite apps, set API base in `apps/web/.env` and `apps/admin/.env`:
 
 ```
 VITE_API_BASE=http://localhost:8787
 ```
 
+On Railway leave `VITE_API_BASE` unset so the browser uses same-origin `/api`.
 ## Content workflow
 
 1. Log in to Admin with `ADMIN_EMAIL` / `ADMIN_PASSWORD`
