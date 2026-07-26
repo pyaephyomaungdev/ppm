@@ -1,4 +1,4 @@
-import "./loadEnv.js";
+import "../loadEnv.js";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema.js";
