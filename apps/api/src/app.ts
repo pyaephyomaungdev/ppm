@@ -1,12 +1,29 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { authRoutes } from "./routes/auth.js";
 import { publicRoutes } from "./routes/public.js";
 import { adminRoutes } from "./routes/admin.js";
 import { getRedis } from "./lib/redis.js";
+
+/** apps/api/public — works whether cwd is repo root or apps/api */
+function resolvePublicDir(): string | null {
+  const here = dirname(fileURLToPath(import.meta.url)); // .../apps/api/dist
+  const candidates = [
+    join(here, "../public"),
+    join(process.cwd(), "public"),
+    join(process.cwd(), "apps/api/public"),
+  ];
+  for (const dir of candidates) {
+    if (existsSync(join(dir, "index.html")) || existsSync(join(dir, "admin", "index.html"))) {
+      return dir;
+    }
+  }
+  return null;
+}
 
 export function createApp() {
   const app = new Hono();
@@ -19,7 +36,10 @@ export function createApp() {
   app.use(
     "*",
     cors({
-      origin: origins,
+      origin: (origin) => {
+        if (!origin) return origins[0] ?? "*";
+        return origins.includes(origin) ? origin : origins[0] ?? origin;
+      },
       credentials: true,
       allowHeaders: ["Content-Type"],
       allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -34,22 +54,37 @@ export function createApp() {
 
   void getRedis();
 
-  const publicDir = join(process.cwd(), "public");
-  if (existsSync(publicDir)) {
-    app.use("/admin/*", serveStatic({ root: publicDir }));
+  const publicDir = resolvePublicDir();
+  if (publicDir) {
+    // Same Railway URL: portfolio at `/`, admin CMS at `/admin/`
+    app.get("/admin", (c) => c.redirect("/admin/", 302));
+
+    app.use(
+      "/admin/*",
+      serveStatic({
+        root: publicDir,
+        rewriteRequestPath: (path) => path, // /admin/assets/... → public/admin/assets/...
+      }),
+    );
     app.use("/*", serveStatic({ root: publicDir }));
-    app.get("*", async (c) => {
+
+    app.get("*", (c) => {
       const path = c.req.path;
       if (path.startsWith("/api")) return c.json({ error: "Not found" }, 404);
-      const { readFileSync } = await import("node:fs");
-      if (path.startsWith("/admin")) {
+
+      if (path === "/admin" || path.startsWith("/admin/")) {
         const file = join(publicDir, "admin", "index.html");
         if (existsSync(file)) {
-          return c.html(readFileSync(file, "utf8"));
+          c.header("Content-Type", "text/html; charset=utf-8");
+          return c.body(readFileSync(file));
         }
       }
+
       const index = join(publicDir, "index.html");
-      if (existsSync(index)) return c.html(readFileSync(index, "utf8"));
+      if (existsSync(index)) {
+        c.header("Content-Type", "text/html; charset=utf-8");
+        return c.body(readFileSync(index));
+      }
       return c.text("Not found", 404);
     });
   }

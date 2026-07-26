@@ -44,14 +44,27 @@ VITE_API_BASE=http://localhost:8787
 3. Public site reads `GET /api/public/portfolio`
 4. Heatmap: `GET /api/public/github/contributions?year=2026` (needs `GITHUB_USERNAME` + `GITHUB_TOKEN`)
 
-## Railway
+## Railway (one service)
 
-1. Create project with **Postgres** and **Redis** plugins
-2. One service from this repo:
+Deploy **one** Railway service from this repo. It serves everything:
+
+| URL path | App |
+|----------|-----|
+| `https://YOUR-APP.up.railway.app/` | Public portfolio (`apps/web`) |
+| `https://YOUR-APP.up.railway.app/admin/` | Admin CMS (`apps/admin`) |
+| `https://YOUR-APP.up.railway.app/api/*` | API |
+
+That is why Railway shows a single service named `ppm` — frontend and admin are not separate services; admin is the `/admin` route on the same host.
+
+### Setup
+
+1. Add **Postgres** and **Redis** plugins to the project
+2. Connect this GitHub repo as **one** service (root directory = repo root)
+3. Build / start (defaults in `railway.json`):
    - **Build:** `npm install && npm run build`
    - **Start:** `npm run start`
-   - Root directory: repo root
-3. Env vars:
+   - **Release:** migrate + seed
+4. Env vars:
 
 | Key | Notes |
 |-----|--------|
@@ -61,21 +74,14 @@ VITE_API_BASE=http://localhost:8787
 | `COOKIE_SECURE` | `true` |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Bootstrap admin |
 | `GITHUB_USERNAME` / `GITHUB_TOKEN` | Heatmap |
-| `CORS_ORIGIN` | Your public URL(s) |
-| `SITE_URL` | Public site URL |
+| `CORS_ORIGIN` | Your public URL (e.g. `https://YOUR-APP.up.railway.app`) |
+| `SITE_URL` | Same as public URL |
 | `NODE_ENV` | `production` |
 | `PORT` | Railway injects |
 
-Production build copies `web` + `admin` into `apps/api/public` so one service serves API + SPAs (`/` and `/admin/`).
+Do **not** set `VITE_API_BASE` on Railway — leave empty so the browser calls same-origin `/api/...`.
 
-After first deploy, run migrate/seed once (Railway release command or one-off):
-
-```bash
-npm run db:migrate -w @ppm/api
-npm run db:seed -w @ppm/api
-```
-
-Or set Railway **Release Command** to those.
+After deploy: open `/admin/` to sign in and add content.
 
 ## Workspace layout
 
