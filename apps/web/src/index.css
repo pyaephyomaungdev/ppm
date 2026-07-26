@@ -46,6 +46,20 @@ body {
   background: color-mix(in oklab, var(--ink) 40%, transparent);
 }
 
+/* Desktop: hide page scrollbar (scroll still works) */
+@media (min-width: 640px) {
+  html {
+    scrollbar-width: none;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+}
+
 #root {
   min-height: 100vh;
 }
