@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { SiteFooter, SiteHeader } from "../components/SiteChrome";
 import { apiGet, type Project } from "../lib/api";
+import { scrollToId } from "../lib/scrollToId";
 
 export function ProjectPage() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [siteName, setSiteName] = useState<string | null>(null);
@@ -41,12 +43,17 @@ export function ProjectPage() {
       <SiteHeader name={siteName} />
 
       <main className="mx-auto max-w-3xl px-5 pb-24 pt-10">
-        <Link
-          to="/#projects"
+        <button
+          type="button"
           className="text-sm text-[var(--muted)] underline-offset-2 hover:text-[var(--ink)] hover:underline"
+          onClick={() => {
+            navigate({ pathname: "/", hash: "projects" });
+            // HomePage will scroll after mount; also try if already cached
+            queueMicrotask(() => scrollToId("projects"));
+          }}
         >
           ← Projects
-        </Link>
+        </button>
 
         {error ? (
           <p className="mt-8 text-sm text-red-700">{error}</p>

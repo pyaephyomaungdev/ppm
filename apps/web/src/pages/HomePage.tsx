@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ContributionHeatmap } from "../components/ContributionHeatmap";
 import { ExperienceSection } from "../components/ExperienceSection";
 import { SiteFooter, SiteHeader } from "../components/SiteChrome";
 import { apiGet, type Portfolio } from "../lib/api";
+import { scrollToId } from "../lib/scrollToId";
 
 export function HomePage() {
   const [data, setData] = useState<Portfolio | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const location = useLocation();
 
   useEffect(() => {
     void apiGet<Portfolio>("/api/public/portfolio")
@@ -16,13 +18,10 @@ export function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!data) return;
-    const id = window.location.hash.replace(/^#/, "");
+    const id = location.hash.replace(/^#/, "");
     if (!id) return;
-    requestAnimationFrame(() => {
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-    });
-  }, [data]);
+    scrollToId(id);
+  }, [location.hash, data]);
 
   const p = data?.profile;
 
