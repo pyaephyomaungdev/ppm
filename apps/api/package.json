@@ -1,0 +1,32 @@
+{
+  "name": "@ppm/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json && node scripts/copy-static.mjs",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed": "tsx src/db/seed.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.4",
+    "@ppm/shared": "*",
+    "argon2": "^0.43.0",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.8.3",
+    "postgres": "^3.4.7",
+    "redis": "^6.1.0",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}

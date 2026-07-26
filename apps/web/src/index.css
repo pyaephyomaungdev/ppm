@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #fbfbfa;
+  --ink: #1a1a1a;
+  --muted: #6b6b6b;
+  --rule: #e8e8e6;
+  --soft: #f4f4f2;
+  --accent: #f54e00;
+  --accent-soft: #ffe8de;
+  --font: "DM Sans", system-ui, sans-serif;
+  --display: "Instrument Serif", Georgia, serif;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font);
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+}

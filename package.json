@@ -1,0 +1,26 @@
+{
+  "name": "ppm",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @ppm/api & npm run dev -w @ppm/web & npm run dev -w @ppm/admin",
+    "dev:api": "npm run dev -w @ppm/api",
+    "dev:web": "npm run dev -w @ppm/web",
+    "dev:admin": "npm run dev -w @ppm/admin",
+    "build": "npm run build -w @ppm/shared && npm run build -w @ppm/web && npm run build -w @ppm/admin && npm run build -w @ppm/api",
+    "start": "npm run start -w @ppm/api",
+    "db:up": "docker compose up -d postgres redis",
+    "db:down": "docker compose stop postgres redis",
+    "db:migrate": "npm run db:migrate -w @ppm/api",
+    "db:seed": "npm run db:seed -w @ppm/api",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
